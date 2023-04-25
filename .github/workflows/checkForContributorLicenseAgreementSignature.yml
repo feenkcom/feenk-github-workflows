@@ -6,6 +6,8 @@ on:
       - opened
 #     branches: [ "main" ]
 
+  workflow_call:
+
 jobs:
   check-contributor-license-agreement:
     permissions:
