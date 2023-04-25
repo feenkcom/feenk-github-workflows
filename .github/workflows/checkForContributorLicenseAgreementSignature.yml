@@ -20,7 +20,7 @@ jobs:
       - id: request-cla-status-for-github-login
         name: Make HTTP request to check if the pull request author has signed the feenk CLA
         run: |
-          curl -s -o /dev/null --write-out "%{http_code}\n" "https://contributor-license-agreement-database.gadget.app/signatureExistsFor?gitHubUsername=${{ github.event.pull_request.user.login }} | grep --quiet 200 "
+          curl -s -o /dev/null --write-out "%{http_code}\n" "https://contributor-license-agreement-database.gadget.app/signatureExistsFor?gitHubUsername=${{ github.event.pull_request.user.login }}" | grep --quiet 200
       - id: add-comment-to-pull-request
         if: ${{ failure() }}
         run: |
