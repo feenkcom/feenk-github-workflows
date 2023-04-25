@@ -1,0 +1,33 @@
+name: Check for Contributor License Agreement signature
+
+on:
+  pull_request:
+    types:
+      - opened
+#     branches: [ "main" ]
+
+jobs:
+  check-contributor-license-agreement:
+    permissions:
+      issues: write
+      pull-requests: write
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - id: request-cla-status-for-github-login
+        name: Make HTTP request to check if the pull request author has signed the feenk CLA
+        run: |
+          curl -s -o /dev/null --write-out "%{http_code}\n" "https://contributor-license-agreement-database.gadget.app/signatureExistsFor?gitHubUsername=${{ github.event.pull_request.user.login }} | grep --quiet 200 "
+      - id: add-comment-to-pull-request
+        if: ${{ failure() }}
+        run: |
+          echo "Please sign the CLA" &&
+          echo "Sending a request to ${{ github.event.pull_request.comments_url }}" &&
+          curl --location \
+            --request POST \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --data '{"body":"Hello ${{ github.event.pull_request.sender.login }} and thanks for contributing! To accept your help and merge your pull request, please take a look at and sign our Contributor License Agreement by visiting https://gtoolkit.com/contributor-license-agreement?gitHubUsername=${{ github.event.pull_request.sender.login }}" }' \
+            ${{ github.event.pull_request.comments_url }}
