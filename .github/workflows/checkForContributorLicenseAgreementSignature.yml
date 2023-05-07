@@ -15,19 +15,35 @@ jobs:
 
     steps:
       - id: request-cla-status-for-github-login
-        name: Make HTTP request to check if the pull request author has signed the feenk CLA
+        name: Check for CLA signing
         run: |
-          curl -s -o /dev/null --write-out "%{http_code}\n" "https://contributor-license-agreement-database.gadget.app/signatureExistsFor?gitHubUsername=${{ github.event.pull_request.user.login }}" | grep --quiet 200
-      - id: add-comment-to-pull-request
-        if: ${{ failure() }}
-        run: |
-          echo "Please sign the CLA" &&
-          echo "Sending a request to ${{ github.event.pull_request.comments_url }}" &&
-          URL_ENCODED_PR_URL=$(ruby -r cgi -e 'puts CGI.escape("${{ github.event.pull_request.html_url }}")') &&
-          curl --location \
-            --request POST \
-            --header "Accept: application/vnd.github+json" \
-            --header "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            --header "X-GitHub-Api-Version: 2022-11-28" \
-            --data '{"body":"Hello ${{ github.event.pull_request.user.login }} and thanks for contributing! To accept your help and merge your pull request, please take a look at and sign feenk’s Contributor License Agreement by visiting https://gtoolkit.com/contributor-license-agreement?gitHubUsername=${{ github.event.pull_request.user.login }}&gitHubPullRequestURL=$URL_ENCODED_PR_URL" }' \
-            ${{ github.event.pull_request.comments_url }}
+          ruby -e '
+          require 'cgi'
+
+GITHUB_USER_LOGIN = "${{ github.event.pull_request.user.login }}"
+GITHUB_PULL_REQUEST_HTML_URL = "${{ github.event.pull_request.html_url }}"
+
+def signatory_exists?(gitHubLogin)
+  result = `curl -s -o /dev/null --write-out "%{http_code}\n" "https://contributor-license-agreement-database.gadget.app/signatureExistsFor?gitHubUsername=#{gitHubLogin}"`
+  200 == Integer(result)
+end
+
+def add_cla_signing_request_comment_to_pull_request
+  escapedGitHubPullRequestURL = CGI.escape(GITHUB_PULL_REQUEST_HTML_URL)
+  `curl --location \
+    --request POST \
+    --header "Accept: application/vnd.github+json" \
+    --header "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+    --header "X-GitHub-Api-Version: 2022-11-28" \
+    --data '{"body":"Hello #{GITHUB_USER_LOGIN} and thanks for contributing! To accept your help and merge your pull request, please take a look at and sign feenk’s Contributor License Agreement by visiting https://gtoolkit.com/contributor-license-agreement?gitHubUsername=${{ github.event.pull_request.user.login }}&gitHubPullRequestURL=#{escapedGitHubPullRequestURL}" }' \
+    ${{ github.event.pull_request.comments_url }}`
+end
+
+puts "Checking if signatory for GitHub login #{GITHUB_USER_LOGIN} exists."
+if signatory_exists?("${{ github.event.pull_request.user.login }}")
+  puts "GitHub login #{GITHUB_USER_LOGIN} has signed the CLA. No action required."
+else
+  puts "GitHub login #{GITHUB_USER_LOGIN} has not signed the CLA. Requesting signature via pull request comment."
+  add_cla_signing_request_comment_to_pull_request
+end
+          '
