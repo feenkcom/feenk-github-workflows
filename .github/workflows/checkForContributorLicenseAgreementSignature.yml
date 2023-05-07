@@ -23,10 +23,11 @@ jobs:
         run: |
           echo "Please sign the CLA" &&
           echo "Sending a request to ${{ github.event.pull_request.comments_url }}" &&
+          URL_ENCODED_PR_URL=$(ruby -r cgi -e 'puts CGI.escape("${{ github.event.pull_request.html_url }}")') &&
           curl --location \
             --request POST \
             --header "Accept: application/vnd.github+json" \
             --header "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             --header "X-GitHub-Api-Version: 2022-11-28" \
-            --data '{"body":"Hello ${{ github.event.pull_request.user.login }} and thanks for contributing! To accept your help and merge your pull request, please take a look at and sign feenk’s Contributor License Agreement by visiting https://gtoolkit.com/contributor-license-agreement?gitHubUsername=${{ github.event.pull_request.user.login }}" }' \
+            --data '{"body":"Hello ${{ github.event.pull_request.user.login }} and thanks for contributing! To accept your help and merge your pull request, please take a look at and sign feenk’s Contributor License Agreement by visiting https://gtoolkit.com/contributor-license-agreement?gitHubUsername=${{ github.event.pull_request.user.login }}&gitHubPullRequestURL=$URL_ENCODED_PR_URL" }' \
             ${{ github.event.pull_request.comments_url }}
